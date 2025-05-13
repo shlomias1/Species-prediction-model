@@ -1,9 +1,3 @@
-"""
-File: download.py
-Author: maximiliense
-Date: 2024-02-08
-Description: This script downloads files from the GeoLifeCLEF 2024 dataset.
-"""
 import re
 import os
 import argparse
