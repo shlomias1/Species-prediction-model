@@ -21,8 +21,7 @@ rasters = {
     'elevation': 'EnvironmentalRasters/Elevation.zip',
     'humanfootprint': 'EnvironmentalRasters/HumanFootprint.zip',
     'landcover': 'EnvironmentalRasters/LandCover.zip',
-    'soilgrids': 'EnvironmentalRasters/Soilgrids.zip',
-    'EnvironmentalValues': 'EnvironmentalValues/EnvironmentalValues.zip'
+    'soilgrids': 'EnvironmentalRasters/Soilgrids.zip'
 }
 
 presence_only = {
@@ -30,7 +29,7 @@ presence_only = {
         'not_cube': [
             'BioclimTimeSeries/values/GLC25-PO-train-bioclimatic_monthly.csv'],
         'cube': [
-            'BioclimTimeSeries/cubes/GLC25-PO-train-bioclimatic_monthly-new.zip',
+            'BioclimTimeSeries/cubes/GLC25-PO-train-bioclimatic_monthly-new.zip'
         ]
     },
     'EnvironmentalValues':{
@@ -74,7 +73,9 @@ presence_only = {
             'SatelliteTimeSeries/GLC24-PO-train-landsat-time-series-blue.csv',
         ],
         'cube': [
-            'SatelliteTimeSeries/cubes/GLC24-PO-train-landsat-time-series.zip'
+            'SatelliteTimeSeries/cubes/GLC24-PA-test-landsat-time-series.zip',
+            'SatelliteTimeSeries/cubes/GLC24-PA-train-landsat-time-series.zip',
+            'SatelliteTimeSeries/cubes/GLC25-PO-train-landsat_time_series.zip'
         ]
     }
 }
