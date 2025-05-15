@@ -30,8 +30,8 @@ def get_pixel_values(tif_file_path, row, col):
 
 def tensor_to_bioclimatic_df(tensor, source=None):
     """
-    ממיר טנזור בצורה (n_bio, n_year, n_month) ל־DataFrame עם עמודות year, month, pr, tas, tasmin, tasmax
-    אם צריך, מבצע permute.
+    Converts a tensor of the form (n_bio, n_year, n_month) to a DataFrame with columns year, month, pr, tas, tasmin, tasmax
+    If necessary, performs a permute.
     """
     if tensor.shape[0] == 4 and tensor.shape[1] == 19 and tensor.shape[2] == 12:
         tensor = tensor.permute(1, 2, 0)
