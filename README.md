@@ -8,7 +8,7 @@ A machine learning model for predicting species distribution based on geospatial
 
 This project uses data from the GeoCLEF dataset to build a predictive model for determining the likelihood of species presence in various geographical regions. The goal is to assist ecological research and environmental monitoring through automated predictions.
 
-## 🗂Repository Structure
+## Repository Structure
 
 ```
 Species-prediction-model/
