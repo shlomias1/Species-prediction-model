@@ -12,18 +12,34 @@ This project uses data from the GeoCLEF dataset to build a predictive model for 
 
 ```
 Species-prediction-model/
-├── data/                 # Sample input datasets
-├── models/               # Trained models and utilities
-├── src/                  # Core Python scripts
-│   ├── config.py  
-│   ├── utils.py  
-│   ├── load_data.py  # Data cleaning and feature engineering
-│   ├── EDA.py  
-│   ├── process.py  # Data prepared
-│   ├── train.py          # Model training logic
-│   └── predict.py        # Inference/prediction logic
-├── requirements.txt      # List of Python dependencies
-└── README.md             # Project documentation
+├── data/                                      # Sample input datasets
+├── models/                                    # Trained models and model utils
+│ └── ...                                      # (Will be created during training)
+├── src/                                       # Core Python scripts
+│ ├── config.py                                # Existing
+│ ├── utils/                                   # Util scripts
+│ │ ├── __init__.py
+│ │ ├── tif2cog.py
+│ │ ├── utils.py
+│ │ └── validate_cloud_optimized_geo.py
+│ ├── data_preparation/                       # Data preparation scripts
+│ │ ├── __init__.py
+│ │ ├── generate_time_series_sample.py
+│ │ ├── make_bounding_box.py
+│ │ ├── merges_LandCover_hdfs.py
+│ │ ├── merges_ASTER_elevation_tifs.py
+│ │ ├── monthly_rasters_preparation.py
+│ │ └── process.py                           # Cleanup/processing process
+│ ├── __init__.py
+│ ├── load_data.py                           # Cleanup and feature preparation
+│ ├── dowland.py                           
+│ ├── EDA.py                                 # Data analysis
+│ ├── train.py                               # Training module (required to add)
+│ ├── predict.py                             # Prediction module (required to add)
+│ └── main.py                                # Main pipeline
+├── requirements.txt                         # Dependencies (required to create)
+└── README.md                                # Documentation
+└── project_GeoCELF2025.sbatch               # Shell executable filen
 ```
 
 ## Requirements
