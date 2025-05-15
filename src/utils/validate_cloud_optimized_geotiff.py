@@ -33,8 +33,6 @@ import os.path
 import struct
 import sys
 from osgeo import gdal
-# import gdal
-
 
 def Usage():
     print('Usage: validate_cloud_optimized_geotiff.py [-q] [--full-check=yes/no/auto] test.tif')
@@ -43,11 +41,6 @@ def Usage():
     print('-q: quiet mode')
     print('--full-check=yes/no/auto: check tile/strip leader/trailer bytes. auto=yes for local files, and no for remote files')
     return 1
-
-
-class ValidateCloudOptimizedGeoTIFFException(Exception):
-    pass
-
 
 def full_check_band(f, band_name, band, errors,
                     block_order_row_major,
@@ -63,32 +56,26 @@ def full_check_band(f, band_name, band, errors,
         if block_size != mask_block_size:
             errors += [ band_name + ': mask block size is different from its imagery band' ]
             mask_band = None
-
     yblocks = (band.YSize + block_size[1] - 1) // block_size[1]
     xblocks = (band.XSize + block_size[0] - 1) // block_size[0]
     last_offset = 0
     for y in range(yblocks):
         for x in range(xblocks):
-
             offset = int(band.GetMetadataItem('BLOCK_OFFSET_%d_%d' % (x,y), 'TIFF'))
             bytecount = int(band.GetMetadataItem('BLOCK_SIZE_%d_%d' % (x,y), 'TIFF'))
-
             if block_order_row_major and offset < last_offset:
                 errors += [ band_name + ': offset of block (%d, %d) is smaller than previous block' % (x,y) ]
-
             if block_leader_size_as_uint4:
                 gdal.VSIFSeekL(f, offset - 4, 0)
                 leader_size = struct.unpack('<I', gdal.VSIFReadL(4, 1, f))[0]
                 if leader_size != bytecount:
                     errors += [ band_name + ': for block (%d, %d), size in leader bytes is %d instead of %d' % (x,y,leader_size,bytecount) ]
-
             if block_trailer_last_4_bytes_repeated:
                 if bytecount >= 4:
                     gdal.VSIFSeekL(f, offset + bytecount - 4, 0)
                     last_bytes = gdal.VSIFReadL(8, 1, f)
                     if last_bytes[0:4] != last_bytes[4:8]:
                         errors += [ band_name + ': for block (%d, %d), trailer bytes are invalid' % (x,y) ]
-
             if mask_band:
                 offset_mask = int(mask_band.GetMetadataItem('BLOCK_OFFSET_%d_%d' % (x,y), 'TIFF'))
                 #bytecount_mask = int(mask_band.GetMetadataItem('BLOCK_SIZE_%d_%d' % (x,y), 'TIFF'))
@@ -97,31 +84,25 @@ def full_check_band(f, band_name, band, errors,
                     (4 if block_trailer_last_4_bytes_repeated else 0)
                 if offset_mask != expected_offset_mask:
                     errors += [ 'Mask of ' + band_name + ': for block (%d, %d), offset is %d, whereas %d was expected' % (x,y,offset_mask,expected_offset_mask) ]
-
             last_offset = offset
 
 def validate(ds,check_tiled=True, full_check=False):
     """Check if a file is a (Geo)TIFF with cloud optimized compatible structure.
-
     Args:
       ds: GDAL Dataset for the file to inspect.
       check_tiled: Set to False to ignore missing tiling.
       full_check: Set to TRUe to check tile/strip leader/trailer bytes. Might be slow on remote files
-
     Returns:
       A tuple, whose first element is an array of error messages
       (empty if there is no error), and the second element, a dictionary
       with the structure of the GeoTIFF file.
-
     Raises:
       ValidateCloudOptimizedGeoTIFFException: Unable to open the file or the
         file is not a Tiff.
     """
-
     if int(gdal.VersionInfo('VERSION_NUM')) < 2020000:
         raise ValidateCloudOptimizedGeoTIFFException(
             'GDAL 2.2 or above required')
-
     unicode_type = type(''.encode('utf-8').decode('utf-8'))
     if isinstance(ds, (str, unicode_type)):
         gdal.PushErrorHandler()
@@ -133,7 +114,6 @@ def validate(ds,check_tiled=True, full_check=False):
         if ds.GetDriver().ShortName != 'GTiff':
             raise ValidateCloudOptimizedGeoTIFFException(
                 'The file is not a GeoTIFF')
-
     details = {}
     errors = []
     warnings = []
@@ -144,29 +124,23 @@ def validate(ds,check_tiled=True, full_check=False):
     if filelist is not None and filename + '.ovr' in filelist:
         errors += [
             'Overviews found in external .ovr file. They should be internal']
-
     if main_band.XSize > 512 or main_band.YSize > 512:
         if check_tiled:
             block_size = main_band.GetBlockSize()
             if block_size[0] == main_band.XSize and block_size[0] > 1024:
                 errors += [
                     'The file is greater than 512xH or Wx512, but is not tiled']
-
         if ovr_count == 0:
             warnings += [
                 'The file is greater than 512xH or Wx512, it is recommended '
                 'to include internal overviews']
-
     ifd_offset = int(main_band.GetMetadataItem('IFD_OFFSET', 'TIFF'))
     ifd_offsets = [ifd_offset]
-
     block_order_row_major = False
     block_leader_size_as_uint4 = False
     block_trailer_last_4_bytes_repeated = False
     mask_interleaved_with_imagery = False
-
     if ifd_offset not in (8, 16):
-
         # Check if there is GDAL hidden structural metadata
         f = gdal.VSIFOpenL(filename, 'rb')
         if not f:
@@ -192,14 +166,11 @@ def validate(ds,check_tiled=True, full_check=False):
             expected_ifd_pos += len(pattern) + size
             expected_ifd_pos += expected_ifd_pos % 2 # IFD offset starts on a 2-byte boundary
         gdal.VSIFCloseL(f)
-
         if expected_ifd_pos != ifd_offsets[0]:
             errors += [
                 'The offset of the main IFD should be %d. It is %d instead' % (expected_ifd_pos, ifd_offsets[0])]
-
     details['ifd_offsets'] = {}
     details['ifd_offsets']['main'] = ifd_offset
-
     for i in range(ovr_count):
         # Check that overviews are by descending sizes
         ovr_band = ds.GetRasterBand(1).GetOverview(i)
@@ -221,7 +192,6 @@ def validate(ds,check_tiled=True, full_check=False):
             if block_size[0] == ovr_band.XSize and block_size[0] > 1024:
                 errors += [
                     'Overview of index %d is not tiled' % i]
-
         # Check that the IFD of descending overviews are sorted by increasing
         # offsets
         ifd_offset = int(ovr_band.GetMetadataItem('IFD_OFFSET', 'TIFF'))
@@ -240,7 +210,6 @@ def validate(ds,check_tiled=True, full_check=False):
                     'whereas it should be greater than the one of index %d, '
                     'which is at byte %d' %
                     (i, ifd_offsets[-1], i - 1, ifd_offsets[-2])]
-
     # Check that the imagery starts by the smallest overview and ends with
     # the main resolution dataset
     block_offset = main_band.GetMetadataItem('BLOCK_OFFSET_0_0', 'TIFF')
@@ -255,7 +224,6 @@ def validate(ds,check_tiled=True, full_check=False):
         data_offset = int(ovr_band.GetMetadataItem('BLOCK_OFFSET_0_0', 'TIFF'))
         data_offsets.append(data_offset)
         details['data_offsets']['overview_%d' % i] = data_offset
-
     if data_offsets[-1] < ifd_offsets[-1]:
         if ovr_count > 0:
             errors += [
@@ -276,14 +244,12 @@ def validate(ds,check_tiled=True, full_check=False):
             'The offset of the first block of the main resolution image'
             'should be after the one of the overview of index %d' %
             (ovr_count - 1)]
-
     if full_check and (block_order_row_major or block_leader_size_as_uint4 or \
                        block_trailer_last_4_bytes_repeated or \
                        mask_interleaved_with_imagery):
         f = gdal.VSIFOpenL(filename, 'rb')
         if not f:
             raise ValidateCloudOptimizedGeoTIFFException("Cannot open file")
-
         full_check_band(f, 'Main resolution image', main_band, errors,
                         block_order_row_major,
                         block_leader_size_as_uint4,
@@ -311,13 +277,11 @@ def validate(ds,check_tiled=True, full_check=False):
                                 block_leader_size_as_uint4,
                                 block_trailer_last_4_bytes_repeated, False)
         gdal.VSIFCloseL(f)
-
     return warnings, errors, details
 
 
 def main():
     """Return 0 in case of success, 1 for failure."""
-
     i = 1
     filename = None
     quiet = False
@@ -337,15 +301,11 @@ def main():
             filename = sys.argv[i]
         else:
             return Usage()
-
         i += 1
-
     if filename is None:
         return Usage()
-
     if full_check is None:
         full_check = filename.startswith('/vsimem/') or os.path.exists(filename)
-
     try:
         ret = 0
         warnings, errors, details = validate(filename, full_check = full_check)
@@ -366,7 +326,6 @@ def main():
         else:
             if not quiet:
                 print('%s is a valid cloud optimized GeoTIFF' % filename)
-
         if not quiet and not warnings and not errors:
             print('\nThe size of all IFD headers is %d bytes' %
                   min(details['data_offsets'][k] for k in details['data_offsets']))
@@ -375,9 +334,7 @@ def main():
             print('%s is NOT a valid cloud optimized GeoTIFF : %s' %
                   (filename, str(e)))
         ret = 1
-
     return ret
-
 
 if __name__ == '__main__':
     sys.exit(main())
