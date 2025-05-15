@@ -8,18 +8,9 @@ from osgeo import gdal
 import torch
 from process import tensor_to_bioclimatic_df
 import io
-
-def unzip(zip_path,extract_to):
-    os.makedirs(extract_to, exist_ok=True)
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_to)
-    print(f"File successfully extracted to folder:\n{extract_to}")
-
-def get_last_part(path):
-    normalized_path = os.path.normpath(path)
-    arr_paths = normalized_path.split("\\")
-    last_part = arr_paths[-1]
-    return last_part
+import zipfile
+from pathlib import Path
+import utils 
 
 def get_files(folder_path):
     files = os.listdir(folder_path) 
@@ -28,16 +19,8 @@ def get_files(folder_path):
     df = pd.DataFrame(valid_files, columns=["file_name"])
     df["file_type"] = df["file_name"].apply(lambda x: x.split(".")[-1] if "." in x else "Unknown")
     df["file_path"] = df["file_name"].apply(lambda x: os.path.join(folder_path, x))
-    df["data_type"] = get_last_part(folder_path)
+    df["data_type"] = utils._get_last_part(folder_path)
     return df
-
-def concat_dataframes(*dfs):
-    valid_dfs = [df for df in dfs if isinstance(df, pd.DataFrame)]
-    if not valid_dfs:
-        print("❌ No DataFrame found for thread.")
-        return pd.DataFrame()
-    concatenated_df = pd.concat(valid_dfs, ignore_index=True)
-    return concatenated_df
 
 def load_csv_to_dataframe(file_path):
     try:
@@ -109,7 +92,7 @@ def load_pt_file(pt_path):
         data = torch.load(pt_path, map_location=torch.device('cpu'))
         return data
     except Exception as e:
-        print(f"שגיאה בקריאת הקובץ: {e}")
+        print(f"Error reading file: {e}")
         return None
 
 def load_pt_file_from_zip_folder(file_like):
@@ -118,7 +101,7 @@ def load_pt_file_from_zip_folder(file_like):
         data = torch.load(buffer, map_location=torch.device('cpu'))
         return data
     except Exception as e:
-        print(f"שגיאה בקריאת הקובץ: {e}")
+        print(f"Error reading file: {e}")
         return None
 
 def load_bioclimatic_tensor_folder(folder_path):
@@ -240,65 +223,135 @@ def load_df_tif_to_dataframe(df):
     result_df = pd.DataFrame(all_data)
     return result_df
 
-# פיצול 80-20
-# train data
-# BioClimatic_Monthly_PA_cube_train = load_bioclimatic_tensor_folder("data/train_data/BioclimTimeSeries/cubes/GLC25_PA_train_bioclimatic_monthly") # pt files
-# BioClimatic_Monthly_PO_cube_train = load_zip_to_dataframe("data/train_data/BioclimTimeSeries/cubes/GLC25_PO_train_bioclimatic_monthly.zip") # pt files on zip file
-# BioClimatic_Monthly_PO_cube_train = load_bioclimatic_tensor_from_df(BioClimatic_Monthly_PO_cube_train)
-# BioClimatic_Monthly_PA_value_train = load_csv_to_dataframe(config.BioClimatic_Monthly_PA_value_train)
-# BioClimatic_Monthly_PO_value_train = load_csv_to_dataframe(config.BioClimatic_Monthly_PO_value_train)
-# BioClimatic_Average_1981_2010_Rasters_train = load_folder_tif_to_dataframe(config.BioClimatic_Average_1981_2010_Rasters_train)
-# Climatic_Monthly_2000_2019_Rasters_train = load_folder_tif_to_dataframe(config.Climatic_Monthly_2000_2019_Rasters_train)
-# ASTER_Elevation_Rasters_train = extract_tif_info(config.ASTER_Elevation_Rasters_train)
-# HumanFootprint_Rasters_train = load_folder_tif_to_dataframe(config.HumanFootprint_Rasters_train)
-# LandCover_Rasters_PA_train = load_csv_to_dataframe(config.LandCover_Rasters_PA_train)
-# LandCover_Rasters_PO_train = load_csv_to_dataframe(config.LandCover_Rasters_PO_train)
-# LandCover_MODIS_Terra_Aqua_train = extract_tif_info(config.LandCover_MODIS_Terra_Aqua_train)
-# Soilgrids_Rasters_train = load_folder_tif_to_dataframe(config.Soilgrids_Rasters_train)
-# Soilgrids_Rasters_PA_train = load_csv_to_dataframe(config.Soilgrids_Rasters_PA_train)
-# Soilgrids_Rasters_PA_train = load_csv_to_dataframe(config.Soilgrids_Rasters_PA_train)
-# BioClimatic_Average_1981_2010_PA_Values_train = load_csv_to_dataframe(config.BioClimatic_Average_1981_2010_PA_Values_train)
-# BioClimatic_Average_1981_2010_PO_Values_train = load_csv_to_dataframe(config.BioClimatic_Average_1981_2010_PO_Values_train)
-# Elevation_PA_Values_train = load_csv_to_dataframe(config.Elevation_PA_Values_train)
-# Elevation_PO_Values_train = load_csv_to_dataframe(config.Elevation_PO_Values_train)
-# HumanFootprint_PA_Values_train = load_csv_to_dataframe(config.HumanFootprint_PA_Values_train)
-# HumanFootprint_PO_Values_train = load_csv_to_dataframe(config.HumanFootprint_PO_Values_train)
-# LandCover_PA_Values_train = load_csv_to_dataframe(config.LandCover_PA_Values_train)
-# LandCover_PO_Values_train = load_csv_to_dataframe(config.LandCover_PO_Values_train)
-# Soilgrids_PA_Values_train = load_csv_to_dataframe(config.Soilgrids_PA_Values_train)
-# Soilgrids_PO_Values_train = load_csv_to_dataframe(config.Soilgrids_PO_Values_train)
-# PA_SatellitePatches_NIR_train_paths = list_files_BFS(config.PA_SatellitePatches_NIR_train) # BFS tif files
-# PA_SatellitePatches_RGB_train_paths = list_files_BFS(config.PA_SatellitePatches_RGB_train) # BFS tif files
-# PO_SatellitePatches_NIR_train_paths = list_files_BFS(config.PO_SatellitePatches_NIR_train) # BFS tif files
-# PO_SatellitePatches_RGB_train_paths = list_files_BFS(config.PO_SatellitePatches_RGB_train) # BFS tif files
-# PA_SatellitePatches_NIR_train = load_df_tif_to_dataframe(PA_SatellitePatches_NIR_train_paths) 
-# PA_SatellitePatches_RGB_train = load_df_tif_to_dataframe(PA_SatellitePatches_RGB_train_paths) 
-# PO_SatellitePatches_NIR_train = load_df_tif_to_dataframe(PO_SatellitePatches_NIR_train_paths)
-# PO_SatellitePatches_RGB_train = load_df_tif_to_dataframe(PO_SatellitePatches_RGB_train_paths) 
-# SatelliteTimeSeries_train = load_many_csv_to_dataframe(config.SatelliteTimeSeries_train)
-# landsat_SatelliteTimeSeries_train = load_zip_to_dataframe("data/train_data/GLC24-PO-train-landsat-time-series.zip") # pt files on zip file
-# landsat_SatelliteTimeSeries_train = load_bioclimatic_tensor_from_df(landsat_SatelliteTimeSeries_train) 
-# PA_metadata_train = load_csv_to_dataframe(config.PA_metadata_train)
-# PO_metadata_train = load_csv_to_dataframe(config.PO_metadata_train)
-# # test data
-# BioClimatic_Monthly_PA_cube_test = "data/test_data/BioclimTimeSeries/cubes" # pt files
-# BioClimatic_Monthly_PA_value_test = load_csv_to_dataframe(config.BioClimatic_Monthly_PA_value_test)
-# BioClimatic_Average_1981_2010_Rasters_test = load_folder_tif_to_dataframe(config.BioClimatic_Average_1981_2010_Rasters_test)
-# Climatic_Monthly_2000_2019_Rasters_test = load_folder_tif_to_dataframe(config.Climatic_Monthly_2000_2019_Rasters_test)
-# ASTER_Elevation_Rasters_test = extract_tif_info(config.ASTER_Elevation_Rasters_test)
-# HumanFootprint_Rasters_test = load_folder_tif_to_dataframe(config.HumanFootprint_Rasters_test)
-# LandCover_Rasters_PA_test = load_csv_to_dataframe(config.LandCover_Rasters_PA_test)
-# Soilgrids_Rasters_test = load_folder_tif_to_dataframe(config.Soilgrids_Rasters_test)
-# Soilgrids_Rasters_PA_test = load_csv_to_dataframe(config.Soilgrids_Rasters_PA_test)
-# BioClimatic_Average_1981_2010_PA_Values_test = load_csv_to_dataframe(config.BioClimatic_Average_1981_2010_PA_Values_test)
-# Elevation_PA_Values_test = load_csv_to_dataframe(config.Elevation_PA_Values_test)
-# HumanFootprint_PA_Values_test = load_csv_to_dataframe(config.HumanFootprint_PA_Values_test)
-# LandCover_PA_Values_test = load_csv_to_dataframe(config.LandCover_PA_Values_test)
-# Soilgrids_PA_Values_test = load_csv_to_dataframe(config.Soilgrids_PA_Values_test)
-# PA_SatellitePatches_NIR_test_paths = list_files_BFS(config.PA_SatellitePatches_NIR_test) # BFS tif files
-# PA_SatellitePatches_RGB_test_paths = list_files_BFS(config.PA_SatellitePatches_RGB_test) # BFS tif files
-# PA_SatellitePatches_NIR_test = load_df_tif_to_dataframe(PA_SatellitePatches_NIR_test_paths)
-# PA_SatellitePatches_RGB_test = load_df_tif_to_dataframe(PA_SatellitePatches_RGB_test_paths)
-# SatelliteTimeSeries_test = load_many_csv_to_dataframe(config.SatelliteTimeSeries_test)
-# landsat_SatelliteTimeSeries_test = "data/test_data/GLC24-PA-test-landsat-time-series.zip" # zip file
-# PA_metadata_test = load_csv_to_dataframe(config.PA_metadata_test)
+def extract_all_zip_files():
+    utils._extract_zip_file(config.EnvironmentalRasters_Climate)
+    utils._extract_zip_file(config.EnvironmentalRasters_Elevation)
+    utils._extract_zip_file(config.EnvironmentalRasters_HumanFootprint)
+    utils._extract_zip_file(config.EnvironmentalRasters_LandCover)
+    utils._extract_zip_file(config.EnvironmentalRasters_Soilgrids)
+    utils._extract_zip_file(config.EnvironmentalValues)
+    utils._extract_zip_file(config.SatellitePatches_PA_NIR_Train)
+    utils._extract_zip_file(config.SatellitePatches_PA_RGB_Train)
+    utils._extract_zip_file(config.SatellitePatches_PO_NIR_Train)
+    utils._extract_zip_file(config.SatellitePatches_PO_RGB_Train)
+    utils._extract_zip_file(config.SatelliteTimeSeries_PA_cube_Train)
+    utils._extract_zip_file(config.SatelliteTimeSeries_PO_cube_Train)
+    utils._extract_zip_file(config.BioClimaticTimeSeries_cube_PA_Test)
+    utils._extract_zip_file(config.SatellitePatches_PA_NIR_Test)
+    utils._extract_zip_file(config.SatellitePatches_PA_RGB_Test)
+    utils._extract_zip_file(config.SatelliteTimeSeries_PA_cube_Test)
+
+# Train
+# # BioClimaticTimeSeries cube
+# BioClimaticTimeSeries_cube_PA_Train = load_zip_to_dataframe(config.BioClimaticTimeSeries_cube_PA_Train)
+# BioClimaticTimeSeries_cube_PO_Train = load_zip_to_dataframe(config.BioClimaticTimeSeries_cube_PO_Train)
+
+# # BioClimaticTimeSeries value
+# BioClimaticTimeSeries_value_PA_Train = load_csv_to_dataframe(config.BioClimaticTimeSeries_value_PA_Train) 
+# BioClimaticTimeSeries_value_PO_Train = load_csv_to_dataframe(config.BioClimaticTimeSeries_value_PO_Train) 
+
+# # EnvironmentalRasters Climate
+# EnvironmentalRasters_Climate_PA_Train_Average = load_csv_to_dataframe(config.EnvironmentalRasters_Climate_PA_Train_Average) 
+# EnvironmentalRasters_Climate_PA_Train_Monthly = load_csv_to_dataframe(config.EnvironmentalRasters_Climate_PA_Train_Monthly) 
+# EnvironmentalRasters_Climate_PO_Train_Average = load_csv_to_dataframe(config.EnvironmentalRasters_Climate_PO_Train_Average) 
+# EnvironmentalRasters_Climate_PO_Train_Monthly = load_csv_to_dataframe(config.EnvironmentalRasters_Climate_PO_Train_Monthly) 
+# EnvironmentalRasters_Climate = load_zip_to_dataframe(config.EnvironmentalRasters_Climate)
+
+# # EnvironmentalRasters Elevation
+# EnvironmentalRasters_Elevation_PA_Train = load_csv_to_dataframe(config.EnvironmentalRasters_Elevation_PA_Train) 
+# EnvironmentalRasters_Elevation_PO_Train = load_csv_to_dataframe(config.EnvironmentalRasters_Elevation_PO_Train) 
+# EnvironmentalRasters_Elevation = load_zip_to_dataframe(config.EnvironmentalRasters_Elevation)
+
+# # EnvironmentalRasters HumanFootprint
+# EnvironmentalRasters_HumanFootprint_PA_Train = load_csv_to_dataframe(config.EnvironmentalRasters_HumanFootprint_PA_Train) 
+# EnvironmentalRasters_HumanFootprint_PO_Train = load_csv_to_dataframe(config.EnvironmentalRasters_HumanFootprint_PO_Train) 
+# EnvironmentalRasters_HumanFootprint = load_zip_to_dataframe(config.EnvironmentalRasters_HumanFootprint)
+
+# # EnvironmentalRasters LandCover
+# EnvironmentalRasters_LandCover_PA_Train = load_csv_to_dataframe(config.EnvironmentalRasters_LandCover_PA_Train) 
+# EnvironmentalRasters_LandCover_PO_Train = load_csv_to_dataframe(config.EnvironmentalRasters_LandCover_PO_Train) 
+# EnvironmentalRasters_LandCover = load_zip_to_dataframe(config.EnvironmentalRasters_LandCover)
+
+# # EnvironmentalRasters Soilgrids
+# EnvironmentalRasters_Soilgrids_PA_Train = load_csv_to_dataframe(config.EnvironmentalRasters_Soilgrids_PA_Train) 
+# EnvironmentalRasters_Soilgrids_PO_Train = load_csv_to_dataframe(config.EnvironmentalRasters_Soilgrids_PO_Train) 
+# EnvironmentalRasters_Soilgrids = load_zip_to_dataframe(config.EnvironmentalRasters_Soilgrids)
+
+
+# # EnvironmentalValues
+# EnvironmentalValues = load_zip_to_dataframe(config.EnvironmentalValues)
+
+# # PresenceAbsenceSurveys
+# PA_metadata_Train = load_csv_to_dataframe(config.PA_metadata_Train) 
+
+# # PresenceOnlyOccurrences
+# PO_metadata_Train = load_csv_to_dataframe(config.PO_metadata_Train) 
+
+# # SatellitePatches
+# SatellitePatches_PA_NIR_Train = load_zip_to_dataframe(config.SatellitePatches_PA_NIR_Train)
+# SatellitePatches_PA_RGB_Train = load_zip_to_dataframe(config.SatellitePatches_PA_RGB_Train)
+# SatellitePatches_PO_NIR_Train = load_zip_to_dataframe(config.SatellitePatches_PO_NIR_Train)
+# SatellitePatches_PO_RGB_Train = load_zip_to_dataframe(config.SatellitePatches_PO_RGB_Train)
+
+# # SatelliteTimeSeries values
+# SatelliteTimeSeries_PA_Blue_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_Blue_Train) 
+# SatelliteTimeSeries_PA_Green_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_Green_Train) 
+# SatelliteTimeSeries_PA_NIR_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_NIR_Train) 
+# SatelliteTimeSeries_PA_Red_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_Red_Train) 
+# SatelliteTimeSeries_PA_SWIR1_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_SWIR1_Train) 
+# SatelliteTimeSeries_PA_SWIR2_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_SWIR2_Train) 
+# SatelliteTimeSeries_PO_Blue_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PO_Blue_Train) 
+# SatelliteTimeSeries_PO_Green_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PO_Green_Train) 
+# SatelliteTimeSeries_PO_NIR_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PO_NIR_Train) 
+# SatelliteTimeSeries_PO_Red_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PO_Red_Train) 
+# SatelliteTimeSeries_PO_SWIR1_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PO_SWIR1_Train) 
+# SatelliteTimeSeries_PO_SWIR2_Train = load_csv_to_dataframe(config.SatelliteTimeSeries_PO_SWIR2_Train) 
+
+# # SatelliteTimeSeries cube
+# SatelliteTimeSeries_PA_cube_Train = load_zip_to_dataframe(config.SatelliteTimeSeries_PA_cube_Train)
+# SatelliteTimeSeries_PO_cube_Train = load_zip_to_dataframe(config.SatelliteTimeSeries_PO_cube_Train)
+
+# # Test
+# # BioClimaticTimeSeries cube
+# BioClimaticTimeSeries_cube_PA_Test = load_zip_to_dataframe(config.BioClimaticTimeSeries_cube_PA_Test)
+
+# # BioClimaticTimeSeries value
+# BioClimaticTimeSeries_value_PA_Test = load_csv_to_dataframe(config.BioClimaticTimeSeries_value_PA_Test) 
+
+# # EnvironmentalRasters Climate
+# EnvironmentalRasters_Climate_PA_Test_Average = load_csv_to_dataframe(config.EnvironmentalRasters_Climate_PA_Test_Average) 
+# EnvironmentalRasters_Climate_PA_Test_Monthly = load_csv_to_dataframe(config.EnvironmentalRasters_Climate_PA_Test_Monthly) 
+
+# # EnvironmentalRasters Elevation
+# EnvironmentalRasters_Elevation_PA_Test = load_csv_to_dataframe(config.EnvironmentalRasters_Elevation_PA_Test) 
+
+# # EnvironmentalRasters HumanFootprint
+# EnvironmentalRasters_HumanFootprint_PA_Test = load_csv_to_dataframe(config.EnvironmentalRasters_HumanFootprint_PA_Test) 
+
+# # EnvironmentalRasters LandCover
+# EnvironmentalRasters_LandCover_PA_Test = load_csv_to_dataframe(config.EnvironmentalRasters_LandCover_PA_Test) 
+
+# # EnvironmentalRasters Soilgrids
+# EnvironmentalRasters_Soilgrids_PA_Test = load_csv_to_dataframe(config.EnvironmentalRasters_Soilgrids_PA_Test) 
+
+# # EnvironmentalValues
+
+# # PresenceAbsenceSurveys
+# PA_metadata_Test = load_csv_to_dataframe(config.PA_metadata_Test) 
+
+# # PresenceOnlyOccurrences
+
+# # SatellitePatches
+# SatellitePatches_PA_NIR_Test = load_zip_to_dataframe(config.SatellitePatches_PA_NIR_Test)
+# SatellitePatches_PA_RGB_Test = load_zip_to_dataframe(config.SatellitePatches_PA_RGB_Test)
+
+# # SatelliteTimeSeries values
+# SatelliteTimeSeries_PA_Blue_Test = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_Blue_Test) 
+# SatelliteTimeSeries_PA_Green_Test = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_Green_Test) 
+# SatelliteTimeSeries_PA_NIR_Test = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_NIR_Test) 
+# SatelliteTimeSeries_PA_Red_Test = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_Red_Test) 
+# SatelliteTimeSeries_PA_SWIR1_Test = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_SWIR1_Test) 
+# SatelliteTimeSeries_PA_SWIR2_Test = load_csv_to_dataframe(config.SatelliteTimeSeries_PA_SWIR2_Test) 
+
+# # SatelliteTimeSeries cube
+# SatelliteTimeSeries_PA_cube_Test = load_zip_to_dataframe(config.SatelliteTimeSeries_PA_cube_Test)
