@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import os
 from config import LOG_DIR
+import zipfile
+from pathlib import Path
 
 def _create_log(log_msg, log_type, log_file = "logs.txt"):
     os.makedirs(LOG_DIR, exist_ok=True)
@@ -11,7 +13,7 @@ def _create_log(log_msg, log_type, log_file = "logs.txt"):
     with open(log_path, "a") as log:
         log.write(f'{log_type} : {log_msg} | {current_time} \n')
 
-def Connect_CUDA():
+def _connect_cuda():
     log_type = "Warning" 
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -26,3 +28,25 @@ def Connect_CUDA():
         _create_log(log_msg, log_type)
         print(log_msg)
     return device
+
+def _get_last_part(path):
+    normalized_path = os.path.normpath(path)
+    arr_paths = normalized_path.split("\\")
+    last_part = arr_paths[-1]
+    return last_part
+
+def _extract_zip_file(zip_path, extract_to=None):
+    if not os.path.isfile(zip_path):
+        raise FileNotFoundError(f"File not found: {zip_path}")
+    if extract_to is None:
+        extract_to = os.path.splitext(zip_path)[0] 
+    os.makedirs(extract_to, exist_ok=True)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+        print(f"✅ Extracted to: {extract_to}")
+    return extract_to
+
+def _check_file_size(file_path):
+    path = Path(file_path)
+    print("File exists?", path.exists())
+    print("Size:", path.stat().st_size, "bytes")
